@@ -7,6 +7,9 @@ class Field:
     In short this means for every field we must have a definition for addition, subtraction, multiplication, and division( or at least multiplicative inverses). To satisfy both subtraction and division we will define additive and multiplicative inverses. This also means we have to have a zero and an one element in our field, and these cannot be equal. The following class will act as a base class for field implementation and will be an object of operations such that for a field f. we can use the operations as follows: f.add(x, y).
     """
 
+    def is_valid(self, x):
+        return x
+
     def zero(self):
         """ additive element of field. x + 0 = x"""
         raise AssertionError("Not implemented")
@@ -56,7 +59,15 @@ class Field:
         return x
 
 
-class FieldExtension(Field):
+class FieldWithInvolution(Field):
+    def involve(self, x):
+        raise AssertionError("Not implemented")
+    
+    def modulus_squared(self, x):
+        return self.multiply(self.involve(x), x)
+
+
+class FieldExtension(FieldWithInvolution):
     def __init__(self, base_field, alpha_relation, involution_pow=None):
         """
             example FieldExtension(Z_5, [1,1,1])
@@ -84,11 +95,11 @@ class FieldExtension(Field):
             for comp in re.split(r'\+', x_str):
                 coeff_i = re.split(r'a\^?', comp)
                 if len(coeff_i) == 1:
-                    x_arr[0] = int(coeff_i[0])
+                    x_arr[0] = self._bf.is_valid(int(coeff_i[0]))
                 elif coeff_i[1] == "":
-                    x_arr[1] = int(coeff_i[0])
+                    x_arr[1] = self._bf.is_valid(int(coeff_i[0]))
                 else:
-                    x_arr[int(coeff_i[1])] = int(coeff_i[0])
+                    x_arr[int(coeff_i[1])] = self._bf.is_valid(int(coeff_i[0]))
         else:
             x_arr = list(x)
         x_arr = self._poly_helper.poly_trim(x_arr)
@@ -114,7 +125,7 @@ class FieldExtension(Field):
         return self._poly_helper.poly_equal(self.is_valid(x),self.is_valid(y))
 
     def add(self, x, y):
-        return self._poly_helper.poly_add(self.is_valid(x),self.is_valid(y))
+        return self.is_valid(self._poly_helper.poly_add(self.is_valid(x),self.is_valid(y)))
 
     def negate(self, x):
         x_ = self.is_valid(x)
@@ -122,7 +133,7 @@ class FieldExtension(Field):
         return [self._bf.multiply(neg_one, a) for a in x_]
 
     def subtract(self, x, y):
-        return self._poly_helper.poly_subtract(self.is_valid(x), self.is_valid(y))
+        return self.is_valid(self._poly_helper.poly_subtract(self.is_valid(x), self.is_valid(y)))
 
     def multiply(self, x, y):
         x_ = self.is_valid(x)
@@ -360,6 +371,13 @@ class Matrix:
             for c in range(col_i, col_t):
                 result.set(r - row_i, c - col_i, self.get(r, c))
         return result
+    
+    def get_sub_matrix_from_cols(self, col_list):
+        result = self.__class__(self.rows, len(col_list), self.f)
+        for r in range(0, self.rows):
+            for c_new, c_old in enumerate(col_list):
+                result.set(r, c_new, self.get(r, c_old))
+        return result
 
     def to_list(self, single=False):
         lst = []
@@ -386,7 +404,11 @@ class Matrix:
 
     def __mul__(self, other):
         if not isinstance(other, Matrix):
-            raise TypeError()
+            result = self.__class__(self.rows, self.columns, self.f)
+            for r in range(result.rows):
+                for c in range(result.columns):
+                    result.set(r, c, self.f.multiply(self.get(r, c), other))
+            return result
         if self.f != other.f:
             raise Exception("Fields do align.")
 
@@ -449,6 +471,13 @@ class Matrix:
                 result.set(r, c, self.f.involve(self.get(c, r)))
         return result
 
+    def modulus_squared_of_entries(self):
+        result = self.__class__(self.columns, self.rows, self.f)
+        for r in range(result.rows):
+            for c in range(result.columns):
+                result.set(r, c, self.f.modulus_squared(self.get(r, c)))
+        return result
+
     def any(self):
         for r in range(self.rows):
             for c in range(self.columns):
@@ -484,7 +513,7 @@ class Matrix:
             if lead >= self.columns:
                 return
             i = r
-            while self.values[i][lead] == 0:
+            while self.f.equals(self.values[i][lead], self.f.zero()):
                 i += 1
                 if i == self.rows:
                     i = r
@@ -506,21 +535,23 @@ class Matrix:
             if lead >= self.columns:
                 return
             i = r
-            while self.values[i][lead] == self.f.zero():
+            while self.f.equals(self.values[i][lead], self.f.zero()):
                 i += 1
                 if i == self.rows:
                     i = r
                     lead += 1
                     if self.columns == lead:
                         return
-            self.swap_rows(i, r)
+            if i != r:
+                self.swap_rows(i, r)
             lv_recip = self.f.reciprocal(self.values[r][lead])
             self.multiply_row(r, lv_recip)
 
             for i in range(self.rows):
                 if i != r:
-                    lv = self.values[i][lead]
-                    self.add_rows(r, i, self.f.negate(lv))
+                    lv = self.values[i][lead] # add case
+                    if lv != self.f.zero():
+                        self.add_rows(r, i, self.f.negate(lv))
             lead += 1
 
     def kernel_space(self):
@@ -529,7 +560,7 @@ class Matrix:
         found here https://en.wikipedia.org/wiki/Kernel_(linear_algebra).
         """
         ai_matrix = augmented_a_b_matrix(self.transpose(), identity_n(self.columns, self.f))
-        ai_matrix.reduced_row_echelon_form()
+        ai_matrix.reduced_row_echelon_form()  # broken!!
         res = []
         for r in range(ai_matrix.rows):
             valid = True

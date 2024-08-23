@@ -30,7 +30,7 @@ class PolynomialOperations(object):
         """
         removes all leading 0 terms from the coefficients array
         """
-        while poly and poly[-1] == self.f.zero():
+        while poly and self.f.equals(poly[-1], self.f.zero()):
             poly.pop()
         if len(poly) == 0:
             poly = [self.f.zero()]
@@ -91,7 +91,10 @@ class PolynomialOperations(object):
     def poly_equal(self, poly1, poly2):
         poly1 = self.poly_trim(poly1)
         poly2 = self.poly_trim(poly2)
-        if poly1 == poly2:
+        if len(poly1) == len(poly2):
+            for e1, e2 in zip(poly1, poly2):
+                if not self.f.equals(e1, e2):
+                    return False
             return True
         else:
             return False
