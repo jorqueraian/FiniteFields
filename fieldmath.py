@@ -87,8 +87,11 @@ class FieldExtension(FieldWithInvolution):
         self._poly_helper = mypoly.PolynomialOperations(self._bf)
 
     def is_valid(self, x):
-        if isinstance(x, str):
-            x_str = x
+        if isinstance(x, str) or isinstance(x, int):
+            if isinstance(x, int):
+                x_str = str(x)
+            else:
+                x_str = x
             terms = [re.split(r'a\^?', term) for term in re.split(r'\+', x_str)]
             helper_f = lambda a: int(a[1]) if len(a)>1 and a[1] != "" else 1
             x_arr = [self._bf.zero()]*(1+max([helper_f(term) for term in terms]))  # sloppy but what ever
@@ -253,7 +256,7 @@ class BinaryField(Field):
         return False
 
 
-class Zp(Field):
+class Zp(FieldWithInvolution):
     def __init__(self, p):
         """ Creates Z_p or Z/pZ where p is prime"""
         self.p = p
@@ -261,6 +264,9 @@ class Zp(Field):
 
     def is_valid(self, x):
         """ x must be of type np.int32 and between 0 and p. I removed the validity check here to make things faster."""
+        return x
+    
+    def involve(self, x):
         return x
 
     def zero(self):
