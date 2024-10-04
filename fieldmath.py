@@ -1,4 +1,6 @@
 import re
+import itertools
+import random
 
 class Field:
     """
@@ -9,6 +11,9 @@ class Field:
 
     def is_valid(self, x):
         return x
+
+    def iter_elems(self):
+        raise AssertionError("Not implemented")
 
     def zero(self):
         """ additive element of field. x + 0 = x"""
@@ -43,8 +48,8 @@ class Field:
         raise AssertionError("Not implemented")
 
     def divide(self, x, y):
-        """ multiply x and y"""
-        raise AssertionError("Not implemented")
+        """ divide x by y"""
+        return self.multiply(x,self.reciprocal(y))
     
     def involve(self, x):
         return x
@@ -117,6 +122,14 @@ class FieldExtension(FieldWithInvolution):
         x_arr = self._poly_helper.poly_trim(x_arr)
 
         return x_arr
+
+    def iter_elems(self):
+        base_elms = [x for x in self._bf.iter_elems()]
+        for el in range(self.size):
+            elem = [None]*self._edeg
+            for entry in range(self._edeg):
+                elem[entry] = (el//(self._bf.size**entry)) % self._bf.size
+            yield elem
 
     def zero(self):
         return [self._bf.zero()]
@@ -266,6 +279,10 @@ class Zp(FieldWithInvolution):
         """ x must be of type np.int32 and between 0 and p. I removed the validity check here to make things faster."""
         return x
     
+    def iter_elems(self):
+        for i in range(self.size):
+            yield i
+
     def involve(self, x):
         return x
 
@@ -335,6 +352,9 @@ def pow_over_field(base, exp, field, use_saved_vals=True):
     return res
 
 
+LATEX_PRINTS = False
+
+
 class Matrix:
     """ Matrix class that works with provided field"""
     def __init__(self, rows, columns, field, init_val=None):
@@ -385,6 +405,13 @@ class Matrix:
                 result.set(r, c_new, self.get(r, c_old))
         return result
 
+    def get_sub_matrix_from_lists(self, row_list, col_list):
+        result = self.__class__(len(row_list), len(col_list), self.f)
+        for r_new, r_old in enumerate(row_list):
+            for c_new, c_old in enumerate(col_list):
+                result.set(r_new, c_new, self.get(r_old, c_old))
+        return result
+
     def to_list(self, single=False):
         lst = []
         for r in range(self.rows):
@@ -399,14 +426,24 @@ class Matrix:
         return lst
 
     def __str__(self):
-      matrix_str = "   "
-      pfn = self.f.print_elm
-      spacing = 2+max([max([len(str(pfn(elm))) for elm in row]) for row in self.values])
-      for (i, row) in enumerate(self.values):
-          if i > 0:
-              matrix_str += " \n    "
-          matrix_str += " ".join(str(pfn(val)) + " "*(spacing-len(str(pfn(val)))) for val in row)
-      return matrix_str + ""
+      if not LATEX_PRINTS:
+        matrix_str = "   "
+        pfn = self.f.print_elm
+        spacing = 1+max([max([len(str(pfn(elm))) for elm in row]) for row in self.values])
+        for (i, row) in enumerate(self.values):
+            if i > 0:
+                matrix_str += " \n    "
+            matrix_str += " ".join(str(pfn(val)) + " "*(spacing-len(str(pfn(val)))) for val in row)
+        return matrix_str + ""
+      else:
+        matrix_str = "\\begin{bmatrix}"
+        pfn = self.f.print_elm
+        spacing = 1+max([max([len(str(pfn(elm))) for elm in row]) for row in self.values])
+        for (i, row) in enumerate(self.values):
+            if i > 0:
+                matrix_str += r"\\"+"\n"
+            matrix_str += "&".join(str(pfn(val)) for val in row)
+        return matrix_str + "\n\\end{bmatrix}"
 
     def __mul__(self, other):
         if not isinstance(other, Matrix):
@@ -429,7 +466,6 @@ class Matrix:
                     val = self.f.add(val, self.f.multiply(self.get(r, i), other.get(i, c)))
                 result.set(r, c, val)
         return result
-
 
     def __add__(self, other):
         if not isinstance(other, Matrix):
@@ -566,7 +602,7 @@ class Matrix:
         found here https://en.wikipedia.org/wiki/Kernel_(linear_algebra).
         """
         ai_matrix = augmented_a_b_matrix(self.transpose(), identity_n(self.columns, self.f))
-        ai_matrix.reduced_row_echelon_form()  # broken!!
+        ai_matrix.reduced_row_echelon_form()  # broken!! I think i fixed actually
         res = []
         for r in range(ai_matrix.rows):
             valid = True
@@ -585,6 +621,44 @@ class Matrix:
                 result.set(r, c, res[r][c])
         return result.transpose()
 
+    def rank(self):
+        rank = 0
+        ref_mat = create_matrix(self.to_list(), self.f)
+        ref_mat.row_echelon_form()
+        for r in range(ref_mat.rows):
+            if ref_mat.get_sub_matrix(row_i=r, row_t=r+1, col_i=None, col_t=None).any():
+                rank += 1
+        return rank
+
+    def det(self):
+        if self.rows != self.columns:
+            return self.f.zero()
+        determinant = self.f.one()
+        working_mat = create_matrix(self.to_list(), self.f)
+        lead = 0
+        for r in range(working_mat.rows):
+            if lead >= working_mat.columns:
+                return determinant
+            i = r
+            while working_mat.f.equals(working_mat.values[i][lead], working_mat.f.zero()):
+                i += 1
+                if i == working_mat.rows:
+                    i = r
+                    lead += 1
+                    if working_mat.columns == lead:
+                        return working_mat.f.zero()
+            working_mat.swap_rows(i, r)
+            if i != r:
+                determinant = working_mat.f.negate(determinant)
+            determinant =working_mat.f.multiply(determinant, working_mat.values[r][lead])
+            lv_recip = working_mat.f.reciprocal(working_mat.values[r][lead])
+
+            for i in range(r, working_mat.rows):
+                if i != r:
+                    lv = working_mat.values[i][lead]
+                    working_mat.add_rows(r, i, working_mat.f.negate(working_mat.f.multiply(lv, lv_recip)))
+            lead += 1
+        return determinant
 
 def identity_n(n, field, val=None):
     """
@@ -697,4 +771,16 @@ def create_matrix(lst, field):
     return result
 
 
-
+def iter_sub_mats(mat, num_col_rows, randomize=True, num_samples = None):
+    # WARNING THIS FUNCTION WHEN random = TRUE will not terminate
+    # this should pick random subsets not in order otherwise there are simply too many
+    assert mat.rows == mat.columns, "Sorry bud"
+    if randomize:
+        its = 0
+        while num_samples is None or its < num_samples:
+            columns_lst = random.sample([k for k in range(mat.columns)], num_col_rows)
+            its += 1
+            yield mat.get_sub_matrix_from_lists(columns_lst, columns_lst), columns_lst
+    else:
+        for columns_lst in itertools.combinations({k for k in range(mat.columns)}, num_col_rows):
+            yield mat.get_sub_matrix_from_lists(columns_lst, columns_lst), columns_lst

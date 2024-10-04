@@ -33,6 +33,8 @@ G_other = fieldmath.create_matrix(
     ], fieldmath.Zp(3))
 
 
+print((G_other.conj_transpose()*G_other).det())
+
 G= hessa_sic
 print("G=\n", G, "\n\n\n")
 print("|G^t*G|^2=\n", (G.conj_transpose()*G).modulus_squared_of_entries(), "\n\n\n")
