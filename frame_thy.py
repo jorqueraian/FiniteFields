@@ -77,6 +77,28 @@ def is_tight(Phi=None, gram_mat=None, why_not=False):
         return False, None
     else:
         return True, c
+    
+def spark(Phi):
+    # This should only every be used for small examples. This is a NP-hard problem
+    # so brute force is basically all we got.
+    d = Phi.rows
+    n = Phi.columns
+    n_list = [i for i in range(n)]
+    spark = d+1
+    done = False
+    for num_to_test in range(d, 1, -1):
+        if done == True:
+            break
+        done = True
+        for subset in itertools.combinations(n_list, num_to_test):
+            rnk = (Phi.get_sub_matrix_from_cols(subset)).rank()
+            if rnk < len(subset):
+                # This measn LD
+                spark -= 1
+                done = False
+                break
+
+    return spark
 
 
 def is_etf(Phi=None, gram_mat=None, do_you_promise_its_a_frame=True, why_not=False):

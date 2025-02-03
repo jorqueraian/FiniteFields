@@ -164,9 +164,6 @@ class FieldExtension(FieldWithInvolution):
     def reciprocal(self, x):
         return pow_over_field(self.is_valid(x), self.size - 2, self, False)
 
-    def divide(self, x, y):
-        raise AssertionError("Not implemented")
-
     def __eq__(self, other):
         return True
     
@@ -520,12 +517,23 @@ class Matrix:
                 result.set(r, c, self.f.modulus_squared(self.get(r, c)))
         return result
 
-    def any(self):
-        for r in range(self.rows):
-            for c in range(self.columns):
-                if not self.f.equals(self.get(r, c), self.f.zero()):
-                    return True
-        return False
+    def any(self, eqs=None, where=False):
+        if eqs is not None:
+            for r in range(self.rows):
+                for c in range(self.columns):
+                    if self.f.equals(self.get(r, c), eqs):
+                        if where:
+                            return (True,r,c)
+                        else:
+                            return True
+            return False
+        else:
+            for r in range(self.rows):
+                for c in range(self.columns):
+                    if not self.f.equals(self.get(r, c), self.f.zero()):
+                        return True
+            return False
+        
 
     def copy(self):
         result = self.__class__(self.rows, self.columns, self.f)
