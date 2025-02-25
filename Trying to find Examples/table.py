@@ -41,7 +41,8 @@ def mat_of_non_zero_vectors(fld, d, mag):
     num_fld_elms = fld.size
     max_num_vecs = num_fld_elms**d
 
-    assert max_num_vecs/num_fld_elms < 1000000000, "You are joking right? do you want your computer to explode?"
+    if max_num_vecs/num_fld_elms > 1000000000:  #, "You are joking right? do you want your computer to explode?"
+        return None
 
     big_mat = []# [[] for _ in range(num_vecs)]
 
@@ -71,10 +72,12 @@ def select_n_compat_vecs(all_vecs, all_vecs_gram, n, search_space=None, vecs_cho
         yield from select_n_compat_vecs(all_vecs, all_vecs_gram, n-1, compat_vecs, vecs_chosen+[add_vec])
 
 
-def check_thy_numbers(p, l, f,s, ss, a, d, n):
+def check_thy_numbers(p, l, f,s, ss, a, d, n, all_vecs=None):
     keys = ["p", "l", "f", "s", "s^2", "a", "d", "n"]
     #for (p, l, f, s, ss, a, d, n) in iter_numbers():
-    all_vecs = mat_of_non_zero_vectors(f, d, a)
+    if all_vecs is None:
+        all_vecs = mat_of_non_zero_vectors(f, d, a)
+        
     all_vecs_gram = (all_vecs.conj_transpose()*all_vecs)
     for maybe_frame_ind in select_n_compat_vecs(all_vecs, all_vecs_gram, n):
         if maybe_frame_ind is None:
@@ -115,6 +118,78 @@ def check_thy_numbers(p, l, f,s, ss, a, d, n):
     return False
 
 
+def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
+    old_p = 0
+    old_d = 0
+    max_n = 0
+    old_a = 0
+    bad_as = []
+    all_vecs = None
+    for (p, _, f, s, welch_ss, a, d, n) in iter_numbers():
+        if p < initial_p or d < initial_d or n < initial_n:
+            continue
+
+        print(p, s, welch_ss, a, d, n)
+        #print(check_thy_numbers(p, None, f, s, welch_ss, a, d, n))
+        if all_vecs is None or old_d != d or old_p != p or old_a != a:
+            all_vecs = mat_of_non_zero_vectors(f, d, a)
+            if all_vecs is None:
+                continue
+            all_vecs_gram = (all_vecs.conj_transpose()*all_vecs)
+            max_n = d**2
+            if old_d != d or old_p != p:
+                bad_as = []
+        old_p = p
+        old_d = d
+        
+        # Changes based on n
+        # But can n vectors even be found?
+        if n > max_n and a in bad_as:
+            continue
+        
+        vecs_found = False
+        for maybe_frame_ind in select_n_compat_vecs(all_vecs, all_vecs_gram, n):
+            if maybe_frame_ind is None:
+                continue
+            else:
+                vecs_found = True
+                maybe_frame = all_vecs.get_sub_matrix_from_cols(maybe_frame_ind)
+                gram = (maybe_frame.conj_transpose()*maybe_frame)
+
+                if maybe_frame.rank() != d:
+                    continue
+                        
+                # Now we know its a frame
+
+                (is_ab, (true_a, b)) = frame_thy.is_equiangular(gram_mat=gram)
+                if not is_ab or b != 1:
+                    continue
+                (is_c, c) = frame_thy.is_tight(gram_mat=gram)
+                if not is_c:
+                    continue
+                # Now we know its (a,1,c)-ETF
+                # Now we want to hint for simplices
+
+                for maybe_simplex_ind in itertools.combinations(range(maybe_frame.columns), s+1):
+                    maybe_simplex = maybe_frame.get_sub_matrix_from_cols(maybe_simplex_ind)
+                    simpl_gram = (maybe_simplex.conj_transpose()*maybe_simplex)
+
+                    if maybe_simplex.rank() != s and simpl_gram.rank() != s:
+                        continue
+                    
+                    # Now we know its a frame
+
+                    (is_c_simp, c_simp) = frame_thy.is_tight(gram_mat=simpl_gram)
+                        
+                    if not is_c_simp:
+                        continue
+
+                    return maybe_frame, maybe_simplex, maybe_frame_ind, maybe_simplex_ind
+        if not vecs_found:
+            max_n = n
+            bad_as.append(a)
+
+
 #for row in iter_numbers():
 #    print(row)
 
@@ -135,7 +210,18 @@ def check_thy_numbers(p, l, f,s, ss, a, d, n):
 # (13, None, <fieldmath.Zp object at 0x00000267187A6D50>, 3, 9, 10, 5, 10)
 # (13, None, <fieldmath.Zp object at 0x000001B4F5776D50>, 5, 12, 8, 6, 11)
 
-for (p, _, f, s, welch_ss, a, d, n) in iter_numbers():
-    print(p, _, f, s, welch_ss, a, d, n)
-    print(check_thy_numbers(p, None, f, s, welch_ss, a, d, n))
+#for (p, _, f, s, welch_ss, a, d, n) in iter_numbers():
+#    print(p, _, f, s, welch_ss, a, d, n)
+#    print(check_thy_numbers(p, None, f, s, welch_ss, a, d, n))
 
+#print(check_thy_numbers_loop(initial_p=29, initial_d=0))
+
+#Sanity
+
+all_vecs = mat_of_non_zero_vectors(fieldmath.Zp(5), 11, 2)
+all_vecs_gram = (all_vecs.conj_transpose()*all_vecs)
+for maybe_frame_ind in select_n_compat_vecs(all_vecs, all_vecs_gram, 56):
+    if maybe_frame_ind is not None:
+        print("OK verified")
+
+print("Ok bad things")
