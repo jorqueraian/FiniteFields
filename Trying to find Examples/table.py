@@ -37,57 +37,69 @@ def iter_numbers():
                     yield (p, None, f, a, welch_ss, s, d, n)
 
 
-def mat_of_non_zero_vectors(fld, d, mag):
+def mat_of_non_zero_vectors(fld, d, magsqrd):
     num_fld_elms = fld.size
     max_num_vecs = num_fld_elms**d
 
     if max_num_vecs/num_fld_elms > 1000000000:  #, "You are joking right? do you want your computer to explode?"
+        print("You are joking right? do you want your computer to explode? Im going to just pretend you were joking and ignore that")
         return None
 
     big_mat = []# [[] for _ in range(num_vecs)]
 
     fld_elms = [x for x in fld.iter_elems()]
     for i, vec in enumerate(itertools.product(fld_elms, repeat=d)):
-        mag_sqrd = sum([v**2 for v in vec])
-        if mag_sqrd == mag:
+        mag_sqrd = fieldmath.field_sum(fld, [fld.multiply(v,v) for v in vec])
+        if mag_sqrd == magsqrd:
             big_mat.append(list(vec))
     
     return fieldmath.create_matrix(big_mat, fld).transpose()
 
 
-def select_n_compat_vecs(all_vecs, all_vecs_gram, n, search_space=None, vecs_chosen=[]):
+def select_n_compat_vecs(all_vecs, n, search_space=None, vecs_chosen=[]):
     if n == 0:
         yield vecs_chosen
-    
-    if search_space is None:
-        search_space = [j for j in range(all_vecs.columns)]
+    else:
+        if search_space is None:
+            search_space = [j for j in range(all_vecs.columns)]
 
-    if len(search_space) < n:
-        yield None
+        if len(search_space) < n:
+            yield None
+        else:
 
-    f = all_vecs.f
+            f = all_vecs.f
 
-    for i, add_vec in enumerate(search_space):
-        compat_vecs = [j for j in search_space if j> i and f.multiply(all_vecs_gram.get(add_vec, j), all_vecs_gram.get(j, add_vec)) == 1 ]
-        yield from select_n_compat_vecs(all_vecs, all_vecs_gram, n-1, compat_vecs, vecs_chosen+[add_vec])
+            def scalar_product_mag(v1, v2):
+                vec1 = all_vecs.get_sub_matrix_from_cols([v1])
+                vec2 = all_vecs.get_sub_matrix_from_cols([v2])
+                sclr_prod = (vec1.conj_transpose()*vec2).get(0,0)
+                if isinstance(vec1.f, fieldmath.FieldWithInvolution):
+                    return vec1.f.modulus_squared(sclr_prod)
+                else:
+                    ## Assume symmetric
+                    return vec1.f.multiply(sclr_prod,sclr_prod)
+
+            for i, add_vec in enumerate(search_space):
+                compat_vecs = [j for ind, j in enumerate(search_space) if ind> i and scalar_product_mag(add_vec, j) == 1 ]
+                yield from select_n_compat_vecs(all_vecs, n-1, compat_vecs, vecs_chosen+[add_vec])
 
 
-def check_thy_numbers(p, l, f,s, ss, a, d, n, all_vecs=None):
+def check_thy_numbers(p, l, f, s, ss, a, d, n, all_vecs=None):
     keys = ["p", "l", "f", "s", "s^2", "a", "d", "n"]
     #for (p, l, f, s, ss, a, d, n) in iter_numbers():
     if all_vecs is None:
         all_vecs = mat_of_non_zero_vectors(f, d, a)
-        
-    all_vecs_gram = (all_vecs.conj_transpose()*all_vecs)
-    for maybe_frame_ind in select_n_compat_vecs(all_vecs, all_vecs_gram, n):
+
+    for maybe_frame_ind in select_n_compat_vecs(all_vecs, n):
         if maybe_frame_ind is None:
             continue
         else:
             maybe_frame = all_vecs.get_sub_matrix_from_cols(maybe_frame_ind)
-            gram = (maybe_frame.conj_transpose()*maybe_frame)
-
             if maybe_frame.rank() != d:
                 continue
+
+            gram = (maybe_frame.conj_transpose()*maybe_frame)
+
                     
             # Now we know its a frame
 
@@ -125,17 +137,18 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
     old_a = 0
     bad_as = []
     all_vecs = None
+    print("p, s, s^2, a, d, n")
     for (p, _, f, s, welch_ss, a, d, n) in iter_numbers():
         if p < initial_p or d < initial_d or n < initial_n:
             continue
 
-        print(p, s, welch_ss, a, d, n)
+        print(p, s, welch_ss, a, d, n,)
         #print(check_thy_numbers(p, None, f, s, welch_ss, a, d, n))
         if all_vecs is None or old_d != d or old_p != p or old_a != a:
             all_vecs = mat_of_non_zero_vectors(f, d, a)
             if all_vecs is None:
                 continue
-            all_vecs_gram = (all_vecs.conj_transpose()*all_vecs)
+
             max_n = d**2
             if old_d != d or old_p != p:
                 bad_as = []
@@ -148,16 +161,16 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
             continue
         
         vecs_found = False
-        for maybe_frame_ind in select_n_compat_vecs(all_vecs, all_vecs_gram, n):
+        for maybe_frame_ind in select_n_compat_vecs(all_vecs, n):
             if maybe_frame_ind is None:
                 continue
             else:
                 vecs_found = True
                 maybe_frame = all_vecs.get_sub_matrix_from_cols(maybe_frame_ind)
-                gram = (maybe_frame.conj_transpose()*maybe_frame)
-
                 if maybe_frame.rank() != d:
                     continue
+
+                gram = (maybe_frame.conj_transpose()*maybe_frame)
                         
                 # Now we know its a frame
 
@@ -193,7 +206,7 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 #for row in iter_numbers():
 #    print(row)
 
-# NO GOs
+
 #(5, None, <fieldmath.Zp object at 0x000002671875DBE0>, 3, 4, 2, 8, 59)
 # (5, None, <fieldmath.Zp object at 0x000002671875DBE0>, 2, 4, 3, 7, 13)
 # (5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 4, 1, 1, 7, 15)
@@ -214,7 +227,9 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 #    print(p, _, f, s, welch_ss, a, d, n)
 #    print(check_thy_numbers(p, None, f, s, welch_ss, a, d, n))
 
-#print(check_thy_numbers_loop(initial_p=29, initial_d=0))
+#print(check_thy_numbers_loop(initial_p=5, initial_d=0))
+
+check_thy_numbers(5, None, fieldmath.Zp(5),3, 4, 2, 10, 45)
 
 #Sanity
 

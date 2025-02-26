@@ -332,6 +332,14 @@ class Zp(FieldWithInvolution):
         return False
 
 
+def field_sum(fld, iter):
+    total = fld.zero()
+    for elm in iter:
+        total = fld.add(total, elm)
+    return total
+
+
+
 def pow_over_field(base, exp, field, use_saved_vals=True):
     if use_saved_vals:
         if exp < 0:
