@@ -339,6 +339,12 @@ def field_sum(fld, iter):
     return total
 
 
+def field_prod(fld, iter):
+    total = fld.one()
+    for elm in iter:
+        total = fld.multiply(total, elm)
+    return total
+
 
 def pow_over_field(base, exp, field, use_saved_vals=True):
     if use_saved_vals:
@@ -377,11 +383,17 @@ class Matrix:
         self.columns = columns
 
         self.cs_gram = gram_col_space
+        if self.cs_gram:
+            self.discr_of_col_span = field_prod(self.f, self.cs_gram)
+        elif self.cs_gram:
+            self.discr_of_col_span = self.f.one()
+        
         self.rs_gram = gram_row_space
         if self.rs_gram is not None:
             self.rs_gram_inv = [self.f.reciprocal(x) for x in self.rs_gram]
         else:
             self.rs_gram_inv = None
+
 
     def get(self, r, c):
         if r < 0 or c < 0 or r >= self.rows or c >= self.columns:
@@ -805,7 +817,7 @@ def solve_lstsq(a, b):
 
 
 # Go back to the column space and row space terminology
-def create_matrix(lst, field, row_space_gram=None, column_space_gram=None):
+def create_matrix(lst, field, row_space_gram=None, column_space_gram=None, by_disc=None):
     """
     Helper function to more easily initialize a matrix from a list
     """
@@ -816,6 +828,9 @@ def create_matrix(lst, field, row_space_gram=None, column_space_gram=None):
         columns = len(lst[0])
     else:
         columns = 1
+
+    if column_space_gram is None and by_disc is not None:
+        column_space_gram = [field.one()]*(rows-1) + [by_disc]
 
     result = Matrix(rows, columns, field, gram_row_space=row_space_gram, gram_col_space=column_space_gram)
     for r in range(rows):

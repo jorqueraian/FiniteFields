@@ -37,12 +37,14 @@ def iter_numbers():
                     yield (p, None, f, a, welch_ss, s, d, n)
 
 
-def mat_of_non_zero_vectors(fld, d, vec_mag_sqrd, output_gram=None):
+def mat_of_non_zero_vectors(fld, d, vec_mag_sqrd, output_gram_discr=None):
     num_fld_elms = fld.size
     max_num_vecs = num_fld_elms**d
 
-    if output_gram is None:
+    if output_gram_discr is None:
         output_gram = [1]*d
+    else:
+        output_gram = [1]*(d-1) + [output_gram_discr]
 
     if max_num_vecs/num_fld_elms > 100000000:  #, "You are joking right? do you want your computer to explode?"
         print("You are joking right? do you want your computer to explode? Im going to just pretend you were joking and ignore that")
@@ -87,11 +89,11 @@ def select_n_compat_vecs(all_vecs, n, search_space=None, vecs_chosen=[], b=1):
                 yield from select_n_compat_vecs(all_vecs, n-1, compat_vecs, vecs_chosen+[add_vec])
 
 
-def check_thy_numbers(p, l, f, s, ss, a, d, n, b=1, all_vecs=None, scalar_product_gram=None):
+def check_thy_numbers(p, l, f, s, ss, a, d, n, b=1, all_vecs=None, scalar_product_gram_discr=None):
     keys = ["p", "l", "f", "s", "s^2", "a", "d", "n"]
     #for (p, l, f, s, ss, a, d, n) in iter_numbers():
     if all_vecs is None:
-        all_vecs = mat_of_non_zero_vectors(f, d, a, scalar_product_gram)
+        all_vecs = mat_of_non_zero_vectors(f, d, a, scalar_product_gram_discr)
 
     for maybe_frame_ind in select_n_compat_vecs(all_vecs, n, b=b):
         if maybe_frame_ind is None:
@@ -113,7 +115,7 @@ def check_thy_numbers(p, l, f, s, ss, a, d, n, b=1, all_vecs=None, scalar_produc
             if not is_c:
                 continue
             # Now we know its (a,1,c)-ETF
-            print(".", end="")
+            print(".", end="", flush=True)
             # print("ETF found\n", maybe_frame, maybe_frame_ind)
             # Now we want to hint for simplices
 
@@ -220,7 +222,7 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 
 ## TRY THESE
 
-check_thy_numbers(5, None, fieldmath.Zp(5),2, 4, 3, 7, 13, b=1, scalar_product_gram=[1,1,1,1,1,1,3])
+#check_thy_numbers(5, None, fieldmath.Zp(5),2, 4, 3, 7, 13, b=1, scalar_product_gram_discr=3)
 
 # (5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 4, 1, 1, 8, 10)
 # (5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 2, 4, 3, 8, 14)
@@ -252,7 +254,7 @@ check_thy_numbers(5, None, fieldmath.Zp(5),2, 4, 3, 7, 13, b=1, scalar_product_g
 
 
 
-#check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 4, 10, b=1, scalar_product_gram=[1,1,1,2])
+check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 4, 10, b=1, scalar_product_gram_discr=2)
 #print("DONE No simplex here! :()")
 
 """for p in [x for x in range(3,15) if ians_numers.isprime(x)]:
