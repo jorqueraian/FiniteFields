@@ -37,11 +37,14 @@ def iter_numbers():
                     yield (p, None, f, a, welch_ss, s, d, n)
 
 
-def mat_of_non_zero_vectors(fld, d, magsqrd):
+def mat_of_non_zero_vectors(fld, d, vec_mag_sqrd, output_gram=None):
     num_fld_elms = fld.size
     max_num_vecs = num_fld_elms**d
 
-    if max_num_vecs/num_fld_elms > 1000000000:  #, "You are joking right? do you want your computer to explode?"
+    if output_gram is None:
+        output_gram = [1]*d
+
+    if max_num_vecs/num_fld_elms > 100000000:  #, "You are joking right? do you want your computer to explode?"
         print("You are joking right? do you want your computer to explode? Im going to just pretend you were joking and ignore that")
         return None
 
@@ -49,14 +52,14 @@ def mat_of_non_zero_vectors(fld, d, magsqrd):
 
     fld_elms = [x for x in fld.iter_elems()]
     for i, vec in enumerate(itertools.product(fld_elms, repeat=d)):
-        mag_sqrd = fieldmath.field_sum(fld, [fld.multiply(v,v) for v in vec])
-        if mag_sqrd == magsqrd:
+        mag_sqrd = fieldmath.field_sum(fld, [fld.multiply(fld.multiply(v,v), og) for v, og in zip(vec, output_gram)])
+        if mag_sqrd == vec_mag_sqrd:
             big_mat.append(list(vec))
     
-    return fieldmath.create_matrix(big_mat, fld).transpose()
+    return fieldmath.create_matrix(big_mat, fld, output_gram=output_gram).transpose()
 
 
-def select_n_compat_vecs(all_vecs, n, search_space=None, vecs_chosen=[]):
+def select_n_compat_vecs(all_vecs, n, search_space=None, vecs_chosen=[], b=1):
     if n == 0:
         yield vecs_chosen
     else:
@@ -72,7 +75,7 @@ def select_n_compat_vecs(all_vecs, n, search_space=None, vecs_chosen=[]):
             def scalar_product_mag(v1, v2):
                 vec1 = all_vecs.get_sub_matrix_from_cols([v1])
                 vec2 = all_vecs.get_sub_matrix_from_cols([v2])
-                sclr_prod = (vec1.conj_transpose()*vec2).get(0,0)
+                sclr_prod = (vec1.adjoint()*vec2).get(0,0)
                 if isinstance(vec1.f, fieldmath.FieldWithInvolution):
                     return vec1.f.modulus_squared(sclr_prod)
                 else:
@@ -80,17 +83,17 @@ def select_n_compat_vecs(all_vecs, n, search_space=None, vecs_chosen=[]):
                     return vec1.f.multiply(sclr_prod,sclr_prod)
 
             for i, add_vec in enumerate(search_space):
-                compat_vecs = [j for ind, j in enumerate(search_space) if ind> i and scalar_product_mag(add_vec, j) == 1 ]
+                compat_vecs = [j for ind, j in enumerate(search_space) if ind> i and scalar_product_mag(add_vec, j) == b ]
                 yield from select_n_compat_vecs(all_vecs, n-1, compat_vecs, vecs_chosen+[add_vec])
 
 
-def check_thy_numbers(p, l, f, s, ss, a, d, n, all_vecs=None):
+def check_thy_numbers(p, l, f, s, ss, a, d, n, b=1, all_vecs=None, scalar_product_gram=None):
     keys = ["p", "l", "f", "s", "s^2", "a", "d", "n"]
     #for (p, l, f, s, ss, a, d, n) in iter_numbers():
     if all_vecs is None:
-        all_vecs = mat_of_non_zero_vectors(f, d, a)
+        all_vecs = mat_of_non_zero_vectors(f, d, a, scalar_product_gram)
 
-    for maybe_frame_ind in select_n_compat_vecs(all_vecs, n):
+    for maybe_frame_ind in select_n_compat_vecs(all_vecs, n, b=b):
         if maybe_frame_ind is None:
             continue
         else:
@@ -98,7 +101,7 @@ def check_thy_numbers(p, l, f, s, ss, a, d, n, all_vecs=None):
             if maybe_frame.rank() != d:
                 continue
 
-            gram = (maybe_frame.conj_transpose()*maybe_frame)
+            gram = (maybe_frame.adjoint()*maybe_frame)
 
                     
             # Now we know its a frame
@@ -110,11 +113,12 @@ def check_thy_numbers(p, l, f, s, ss, a, d, n, all_vecs=None):
             if not is_c:
                 continue
             # Now we know its (a,1,c)-ETF
+            print("ETF found", maybe_frame, maybe_frame_ind)
             # Now we want to hint for simplices
 
             for maybe_simplex_ind in itertools.combinations(range(maybe_frame.columns), s+1):
                 maybe_simplex = maybe_frame.get_sub_matrix_from_cols(maybe_simplex_ind)
-                simpl_gram = (maybe_simplex.conj_transpose()*maybe_simplex)
+                simpl_gram = (maybe_simplex.adjoint()*maybe_simplex)
 
                 if maybe_simplex.rank() != s and simpl_gram.rank() != s:
                     continue
@@ -170,7 +174,7 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
                 if maybe_frame.rank() != d:
                     continue
 
-                gram = (maybe_frame.conj_transpose()*maybe_frame)
+                gram = (maybe_frame.adjoint()*maybe_frame)
                         
                 # Now we know its a frame
 
@@ -185,7 +189,7 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 
                 for maybe_simplex_ind in itertools.combinations(range(maybe_frame.columns), s+1):
                     maybe_simplex = maybe_frame.get_sub_matrix_from_cols(maybe_simplex_ind)
-                    simpl_gram = (maybe_simplex.conj_transpose()*maybe_simplex)
+                    simpl_gram = (maybe_simplex.adjoint()*maybe_simplex)
 
                     if maybe_simplex.rank() != s and simpl_gram.rank() != s:
                         continue
@@ -229,14 +233,37 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 
 #print(check_thy_numbers_loop(initial_p=5, initial_d=0))
 
-check_thy_numbers(5, None, fieldmath.Zp(5),3, 4, 2, 10, 45)
+#check_thy_numbers(5, None, fieldmath.Zp(5),3, 4, 2, 10, 45)
 
 #Sanity
 
-all_vecs = mat_of_non_zero_vectors(fieldmath.Zp(5), 11, 2)
-all_vecs_gram = (all_vecs.conj_transpose()*all_vecs)
-for maybe_frame_ind in select_n_compat_vecs(all_vecs, all_vecs_gram, 56):
-    if maybe_frame_ind is not None:
-        print("OK verified")
+#all_vecs = mat_of_non_zero_vectors(fieldmath.Zp(5), 11, 2)
+#all_vecs_gram = (all_vecs.adjoint()*all_vecs)
+#for maybe_frame_ind in select_n_compat_vecs(all_vecs, all_vecs_gram, 56):
+#    if maybe_frame_ind is not None:
+#        print("OK verified")
 
-print("Ok bad things")
+#print("Ok bad things")
+
+
+
+
+check_thy_numbers(3, None, fieldmath.Zp(3),0, 0, 0, 4, 10, b=1, scalar_product_gram=[1,1,1,2])
+print("DONE")
+
+for p in [x for x in range(3,15) if ians_numers.isprime(x)]:
+
+    f = fieldmath.Zp(p)
+    sqrs = [(x,f.print_elm(f.multiply(x, x))) for x in f.iter_elems()]
+    def square_root(x):
+        return next((srx[0] for srx in sqrs if srx[1]==x), None)
+        
+    for a in f.iter_elems():
+        for b in f.iter_elems():
+            if f.equals(b,f.zero()):
+                continue
+            elif not f.equals(f.multiply(6,f.multiply(a,a)), f.multiply(4*9,b)):
+                continue
+            else:
+                # dims line up
+                check_thy_numbers(p, None, f, 0, 0, a, 4, 10, b=b)

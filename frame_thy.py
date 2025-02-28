@@ -45,7 +45,7 @@ def is_equiangular(Phi=None, gram_mat=None, why_not=False):
         assert False, "you need to specify an input"
     
     if gram_mat is None:
-        gram_mat = (Phi.conj_transpose()*Phi)
+        gram_mat = (Phi.adjoint()*Phi)
     gram_mat_modulus_sqrd = gram_mat.modulus_squared_of_entries()
     a = gram_mat_modulus_sqrd.get(0, 0)  # Is this actually a^2? maybe
     b = gram_mat_modulus_sqrd.get(0, 1)
@@ -65,7 +65,7 @@ def is_tight(Phi=None, gram_mat=None, why_not=False):
         assert False, "you need to specify an input"
     
     if gram_mat is None:
-        gram_mat = (Phi.conj_transpose()*Phi)
+        gram_mat = (Phi.adjoint()*Phi)
 
     gram_sqrd = gram_mat*gram_mat
 
@@ -139,7 +139,7 @@ def is_frame(Phi=None, gram_mat=None, with_discr=True):
             return False
     
     if gram_mat is not None:
-        if (gram_mat-gram_mat.conj_transpose()).any():
+        if (gram_mat-gram_mat.adjoint()).any():
             return False, (None, None)
         rank = gram_mat.rank()
 
