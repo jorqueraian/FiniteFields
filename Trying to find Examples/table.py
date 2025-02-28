@@ -106,13 +106,14 @@ def check_thy_numbers(p, l, f, s, ss, a, d, n, b=1, all_vecs=None, scalar_produc
                     
             # Now we know its a frame
 
-            (is_ab, (true_a, b)) = frame_thy.is_equiangular(gram_mat=gram)
-            if not is_ab or b != 1:
-                continue
+            #(is_ab, (true_a, b)) = frame_thy.is_equiangular(gram_mat=gram)
+            #if not is_ab or b != 1:
+            #    continue
             (is_c, c) = frame_thy.is_tight(gram_mat=gram)
             if not is_c:
                 continue
             # Now we know its (a,1,c)-ETF
+            print(".", end="")
             # print("ETF found\n", maybe_frame, maybe_frame_ind)
             # Now we want to hint for simplices
 
@@ -218,6 +219,9 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 #(5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 4, 1, 1, 7, 20)
 
 ## TRY THESE
+
+check_thy_numbers(5, None, fieldmath.Zp(5),2, 4, 3, 7, 13, b=1, scalar_product_gram=[1,1,1,1,1,1,3])
+
 # (5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 4, 1, 1, 8, 10)
 # (5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 2, 4, 3, 8, 14)
 # (5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 2, 4, 3, 8, 19)
@@ -248,10 +252,10 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 
 
 
-check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 4, 10, b=1, scalar_product_gram=[1,1,1,2])
-print("DONE")
+#check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 4, 10, b=1, scalar_product_gram=[1,1,1,2])
+#print("DONE No simplex here! :()")
 
-for p in [x for x in range(3,15) if ians_numers.isprime(x)]:
+"""for p in [x for x in range(3,15) if ians_numers.isprime(x)]:
 
     f = fieldmath.Zp(p)
     sqrs = [(x,f.print_elm(f.multiply(x, x))) for x in f.iter_elems()]
@@ -266,12 +270,15 @@ for p in [x for x in range(3,15) if ians_numers.isprime(x)]:
                 continue
             else:
                 # dims line up
-                check_thy_numbers(p, None, f, 0, 0, a, 4, 10, b=b)
+                check_thy_numbers(p, None, f, 0, 0, a, 4, 10, b=b)"""
 
 
 
 
-
+#Here is the theory I want to build
+# It is know that ETFs in the orthogonal geometry exists (In cases where real ETFs dont)
+# however what is not know is if they exist in the real model, ie when the discr is a square.
+# I want to be able to say that if a ETF in an orthogonal geometry exists then is must exists with some specific discriminant, or both.
 
 
 

@@ -475,18 +475,18 @@ class Matrix:
 
     def __mul__(self, other):
         if not isinstance(other, Matrix):
-            result = self.__class__(self.rows, self.columns, self.f, gram_row_space=self.rs_gram, gram_col_space=other.rs_gram)
+            result = self.__class__(self.rows, self.columns, self.f, gram_row_space=self.rs_gram, gram_col_space=self.rs_gram)
             for r in range(result.rows):
                 for c in range(result.columns):
                     result.set(r, c, self.f.multiply(self.get(r, c), other))
             return result
         if self.f != other.f:
-            raise Exception("Fields do align.")
+            raise Exception("Fields do not align.")
 
         if self.columns != other.rows:
-            raise Exception("Can not multiple matrices, inner dimensions do no align.")
+            raise Exception("Can not multiply matrices, inner dimensions do no align.")
 
-        result = self.__class__(self.rows, other.columns, self.f)
+        result = self.__class__(self.rows, other.columns, self.f, gram_row_space=self.rs_gram, gram_col_space=other.rs_gram)
         for r in range(result.rows):
             for c in range(result.columns):
                 val = self.f.zero()
