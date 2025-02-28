@@ -363,7 +363,7 @@ LATEX_PRINTS = False
 
 class Matrix:
     """ Matrix class that works with provided field"""
-    def __init__(self, rows, columns, field, init_val=None, gram_input_space=None, gram_output_space=None):
+    def __init__(self, rows, columns, field, init_val=None, gram_row_space=None, gram_col_space=None):
         """initializes rows x columns matrix with init_val """
         if rows <= 0 or columns <= 0:
             raise ValueError("rows and columns must be > 0.")
@@ -376,12 +376,12 @@ class Matrix:
         self.rows = rows
         self.columns = columns
 
-        self.os_gram = gram_output_space
-        self.is_gram = gram_input_space
-        if self.is_gram is not None:
-            self.is_gram_inv = [self.f.reciprocal(x) for x in self.is_gram]
+        self.cs_gram = gram_col_space
+        self.rs_gram = gram_row_space
+        if self.rs_gram is not None:
+            self.rs_gram_inv = [self.f.reciprocal(x) for x in self.rs_gram]
         else:
-            self.is_gram_inv = None
+            self.rs_gram_inv = None
 
     def get(self, r, c):
         if r < 0 or c < 0 or r >= self.rows or c >= self.columns:
@@ -405,23 +405,23 @@ class Matrix:
 
         if row_t <= row_i or col_t <= col_i:
             raise Exception("Invalid parameters. Terminator can not be leq init.")
-        new_os_gram = None
-        if self.os_gram is not None:
-            new_os_gram = self.os_gram[row_i:row_t]
-        new_is_gram = None
-        if self.is_gram is not None:
-            new_is_gram = self.is_gram[col_i:col_t]
-        result = self.__class__(row_t - row_i, col_t - col_i, self.f, gram_input_space=new_is_gram, gram_output_space=new_os_gram)
+        new_cs_gram = None
+        if self.cs_gram is not None:
+            new_cs_gram = self.cs_gram[row_i:row_t]
+        new_rs_gram = None
+        if self.rs_gram is not None:
+            new_rs_gram = self.rs_gram[col_i:col_t]
+        result = self.__class__(row_t - row_i, col_t - col_i, self.f, gram_row_space=new_rs_gram, gram_col_space=new_cs_gram)
         for r in range(row_i, row_t):
             for c in range(col_i, col_t):
                 result.set(r - row_i, c - col_i, self.get(r, c))
         return result
     
     def get_sub_matrix_from_cols(self, col_list):
-        new_is_gram = None
-        if self.is_gram is not None:
-            new_is_gram = [self.is_gram[c] for c in col_list]
-        result = self.__class__(self.rows, len(col_list), self.f, gram_input_space=new_is_gram, gram_output_space=self.os_gram)
+        new_rs_gram = None
+        if self.rs_gram is not None:
+            new_rs_gram = [self.rs_gram[c] for c in col_list]
+        result = self.__class__(self.rows, len(col_list), self.f, gram_row_space=new_rs_gram, gram_col_space=self.cs_gram)
         for r in range(0, self.rows):
             for c_new, c_old in enumerate(col_list):
                 result.set(r, c_new, self.get(r, c_old))
@@ -429,12 +429,12 @@ class Matrix:
 
     def get_sub_matrix_from_lists(self, row_list, col_list):
         new_is_gram = None
-        if self.is_gram is not None:
-            new_is_gram = [self.is_gram[c] for c in col_list]
+        if self.rs_gram is not None:
+            new_is_gram = [self.rs_gram[c] for c in col_list]
         new_os_gram = None
-        if self.os_gram is not None:
-            new_os_gram = [self.os_gram[r] for r in row_list]
-        result = self.__class__(len(row_list), len(col_list), self.f, gram_input_space=new_is_gram, gram_output_space=new_os_gram)
+        if self.cs_gram is not None:
+            new_os_gram = [self.cs_gram[r] for r in row_list]
+        result = self.__class__(len(row_list), len(col_list), self.f, gram_row_space=new_is_gram, gram_col_space=new_os_gram)
         for r_new, r_old in enumerate(row_list):
             for c_new, c_old in enumerate(col_list):
                 result.set(r_new, c_new, self.get(r_old, c_old))
@@ -475,7 +475,7 @@ class Matrix:
 
     def __mul__(self, other):
         if not isinstance(other, Matrix):
-            result = self.__class__(self.rows, self.columns, self.f)
+            result = self.__class__(self.rows, self.columns, self.f, gram_row_space=self.rs_gram, gram_col_space=other.rs_gram)
             for r in range(result.rows):
                 for c in range(result.columns):
                     result.set(r, c, self.f.multiply(self.get(r, c), other))
@@ -529,7 +529,7 @@ class Matrix:
 
     def transpose(self):
         # Im being very sloppy here, really this should never be called except for utility. Use adjoint instead.
-        result = self.__class__(self.columns, self.rows, self.f, gram_input_space=self.os_gram, gram_output_space=self.is_gram)
+        result = self.__class__(self.columns, self.rows, self.f, gram_row_space=self.cs_gram, gram_col_space=self.rs_gram)
         for r in range(result.rows):
             for c in range(result.columns):
                 result.set(r, c, self.get(c, r))
@@ -537,21 +537,21 @@ class Matrix:
     
     def conj_transpose(self):
         # Im being very sloppy here, really this should never be called except for utility. Use adjoint instead.
-        result = self.__class__(self.columns, self.rows, self.f, gram_input_space=self.os_gram, gram_output_space=self.is_gram)
+        result = self.__class__(self.columns, self.rows, self.f, gram_row_space=self.cs_gram, gram_col_space=self.rs_gram)
         for r in range(result.rows):
             for c in range(result.columns):
                 result.set(r, c, self.f.involve(self.get(c, r)))
         return result
     
     def adjoint(self):
-        result = self.__class__(self.columns, self.rows, self.f, gram_input_space=self.os_gram, gram_output_space=self.is_gram)
-        if self.os_gram is None:
-            self.os_gram = [self.f.one()]*self.rows
-        if self.is_gram_inv is None:
-            self.is_gram_inv = [self.f.one()]*self.columns
+        result = self.__class__(self.columns, self.rows, self.f, gram_row_space=self.cs_gram, gram_col_space=self.rs_gram)
+        if self.cs_gram is None:
+            self.cs_gram = [self.f.one()]*self.rows
+        if self.rs_gram_inv is None:
+            self.rs_gram_inv = [self.f.one()]*self.columns
         for r in range(result.rows):
             for c in range(result.columns):
-                result.set(r, c, self.f.multiply(self.is_gram_inv[c], self.f.multiply(self.f.involve(self.get(c, r)), self.os_gram[r])))
+                result.set(r, c, self.f.multiply(self.rs_gram_inv[r], self.f.multiply(self.f.involve(self.get(c, r)), self.cs_gram[c])))
         return result
 
     def modulus_squared_of_entries(self):
@@ -804,7 +804,8 @@ def solve_lstsq(a, b):
     return x
 
 
-def create_matrix(lst, field, input_gram=None, output_gram=None):
+# Go back to the column space and row space terminology
+def create_matrix(lst, field, row_space_gram=None, column_space_gram=None):
     """
     Helper function to more easily initialize a matrix from a list
     """
@@ -816,7 +817,7 @@ def create_matrix(lst, field, input_gram=None, output_gram=None):
     else:
         columns = 1
 
-    result = Matrix(rows, columns, field, gram_input_space=input_gram, gram_output_space=output_gram)
+    result = Matrix(rows, columns, field, gram_row_space=row_space_gram, gram_col_space=column_space_gram)
     for r in range(rows):
         for c in range(columns):
             result.set(r, c, lst[r][c])

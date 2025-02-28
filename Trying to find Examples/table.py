@@ -56,7 +56,7 @@ def mat_of_non_zero_vectors(fld, d, vec_mag_sqrd, output_gram=None):
         if mag_sqrd == vec_mag_sqrd:
             big_mat.append(list(vec))
     
-    return fieldmath.create_matrix(big_mat, fld, output_gram=output_gram).transpose()
+    return fieldmath.create_matrix(big_mat, fld, row_space_gram=output_gram).transpose()
 
 
 def select_n_compat_vecs(all_vecs, n, search_space=None, vecs_chosen=[], b=1):
@@ -113,7 +113,7 @@ def check_thy_numbers(p, l, f, s, ss, a, d, n, b=1, all_vecs=None, scalar_produc
             if not is_c:
                 continue
             # Now we know its (a,1,c)-ETF
-            print("ETF found", maybe_frame, maybe_frame_ind)
+            # print("ETF found\n", maybe_frame, maybe_frame_ind)
             # Now we want to hint for simplices
 
             for maybe_simplex_ind in itertools.combinations(range(maybe_frame.columns), s+1):
@@ -248,7 +248,7 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 
 
 
-check_thy_numbers(3, None, fieldmath.Zp(3),0, 0, 0, 4, 10, b=1, scalar_product_gram=[1,1,1,2])
+check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 4, 10, b=1, scalar_product_gram=[1,1,1,2])
 print("DONE")
 
 for p in [x for x in range(3,15) if ians_numers.isprime(x)]:
@@ -267,3 +267,17 @@ for p in [x for x in range(3,15) if ians_numers.isprime(x)]:
             else:
                 # dims line up
                 check_thy_numbers(p, None, f, 0, 0, a, 4, 10, b=b)
+
+
+
+
+
+
+
+
+
+### Here is a frame of 10 vecs over F_3^4
+#  0  0  0  0  1  1  1  1  1  1  
+#   0  0  1  1  0  0  1  1  2  2  
+#   1  1  0  0  0  0  1  2  1  2  
+#   1  2  1  2  1  2  0  0  0  0

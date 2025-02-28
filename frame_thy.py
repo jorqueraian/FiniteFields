@@ -69,6 +69,13 @@ def is_tight(Phi=None, gram_mat=None, why_not=False):
 
     gram_sqrd = gram_mat*gram_mat
 
+    if gram_mat.f.equals(gram_sqrd.get(0,0), gram_mat.f.zero()) and gram_sqrd.any():
+        if why_not:
+            print("Yikes")
+        return False, None
+    elif not gram_sqrd.any():
+        return True, gram_sqrd.get(0,0)
+    
     c = gram_mat.f.divide(gram_sqrd.get(0,0),gram_mat.get(0,0))
 
     if (gram_sqrd-(gram_mat*c)).any():
