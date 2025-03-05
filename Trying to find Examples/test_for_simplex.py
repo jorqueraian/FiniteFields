@@ -27,6 +27,8 @@ emilys_fav_frame = fieldmath.create_matrix(
         ["1","1a^2","1a",     "0","0","0",      "1","1a^2","1a"   ]
     ], f25)
 
-print(frame_thy.is_etf(emilys_fav_frame))
+print(frame_thy.is_etf(hessa_sic))
 
-print(frame_thy.contains_simplex(2, emilys_fav_frame, get_all=True))
+print(frame_thy.contains_simplex(2, hessa_sic, get_all=True))
+# My code is wrong! a = 2? 
+print(frame_thy.contains_simplex(3, hessa_sic, get_all=True))

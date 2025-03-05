@@ -47,11 +47,13 @@ def is_equiangular(Phi=None, gram_mat=None, why_not=False):
     if gram_mat is None:
         gram_mat = (Phi.adjoint()*Phi)
     gram_mat_modulus_sqrd = gram_mat.modulus_squared_of_entries()
-    a = gram_mat_modulus_sqrd.get(0, 0)  # Is this actually a^2? maybe
+    a = gram_mat.get(0, 0) 
+    a_sqrd = gram_mat_modulus_sqrd.get(0, 0)
     b = gram_mat_modulus_sqrd.get(0, 1)
 
     # This is lazy but im ok with that.
-    test_mat = fieldmath.identity_n(gram_mat.rows, gram_mat.f, gram_mat.f.subtract(a,b)) + fieldmath.Matrix(gram_mat.rows, gram_mat.rows, gram_mat.f, b)
+    # I have changed a, did this break things?
+    test_mat = fieldmath.identity_n(gram_mat.rows, gram_mat.f, gram_mat.f.subtract(a_sqrd,b)) + fieldmath.Matrix(gram_mat.rows, gram_mat.rows, gram_mat.f, b)
     if (gram_mat_modulus_sqrd - test_mat).any():
         if why_not:
             print("Modulus Squared of Gram matrix:\n\n", gram_mat_modulus_sqrd)
