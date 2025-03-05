@@ -170,6 +170,29 @@ def is_frame(Phi=None, gram_mat=None, with_discr=True):
     return False, (rank, None)
     
 
+def contains_simplex(s, Phi=None, gram_mat=None, get_all=False):
+    all_simps = []
+    for maybe_simplex_ind in itertools.combinations(range(Phi.columns), s+1):
+        maybe_simplex = Phi.get_sub_matrix_from_cols(maybe_simplex_ind)
+        simpl_gram = (maybe_simplex.adjoint()*maybe_simplex)
+
+        if maybe_simplex.rank() != s and simpl_gram.rank() != s:
+            continue
+                    
+        # Now we know its a frame
+
+        (is_c_simp, c_simp) = is_tight(gram_mat=simpl_gram)
+                        
+        if not is_c_simp:
+            continue
+        
+        if get_all:
+                all_simps.append(maybe_simplex_ind)
+        else:
+            return maybe_simplex, maybe_simplex_ind
+    return all_simps
+
+
 if __name__ == "__main__":
     ############# An example of a conference Matrix #################
     ## We will create one that is 126 by 126 ##
