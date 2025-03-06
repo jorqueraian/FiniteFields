@@ -162,7 +162,10 @@ class FieldExtension(FieldWithInvolution):
         return self.is_valid(new_elem)
 
     def reciprocal(self, x):
-        return pow_over_field(self.is_valid(x), self.size - 2, self, False)
+        if self.equals(self.is_valid(x), self.zero()):
+            return None
+        else:
+            return pow_over_field(self.is_valid(x), self.size - 2, self, False)
 
     def __eq__(self, other):
         return True
@@ -274,7 +277,7 @@ class Zp(FieldWithInvolution):
 
     def is_valid(self, x):
         """ x must be of type np.int32 and between 0 and p. I removed the validity check here to make things faster."""
-        return x
+        return x % self.p
     
     def iter_elems(self):
         for i in range(self.size):

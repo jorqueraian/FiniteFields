@@ -1,6 +1,7 @@
 import fieldmath
 import itertools
 import math
+import numpy as np
 
 
 def create_conference_matrix(construction_field, mat_field):
@@ -36,7 +37,10 @@ def create_gram_of_d_2d_etf_from_conference_mat(conference_mat, field, sqrt_2dmi
     # this is an easy check but im lazy and the create_conf_mats function creates symmetric ones
     assert promise_C_is_symmetric, "Im sorry but you must promise me this one thing"
 
-    return conference_mat*field.reciprocal(sqrt_2dminus1)+ fieldmath.identity_n(conference_mat.rows, field)
+    if field.equals(sqrt_2dminus1, 0):
+        return conference_mat + fieldmath.identity_n(conference_mat.rows, field, sqrt_2dminus1)
+    else:
+        return conference_mat*field.reciprocal(sqrt_2dminus1)+ fieldmath.identity_n(conference_mat.rows, field)
 
 
 def is_equiangular(Phi=None, gram_mat=None, why_not=False):
@@ -131,12 +135,13 @@ def is_frame(Phi=None, gram_mat=None, with_discr=True):
     # And maybe something to do with the discriminant. But regardless, 
     # this comes down to computing some determinant, specifically of the gram matrix of the IP on the image of the frame
     # There are 3 things to check here 1) G
-    assert gram_mat is not None, "Sorry i haven't done the other case yet"
     
     if gram_mat is not None:
         fld = gram_mat.f
-    else:
-        fld = Phi.f
+    elif Phi is not None:
+        rank = Phi.rank()
+        return Phi.rank() == (Phi.adjoint()*Phi).rank(), (rank, None)
+        
     sqrs = list(set([fld.print_elm(fld.multiply(x, x)) for x in fld.iter_elems()]))
     
     def is_sqr(x):
@@ -172,27 +177,104 @@ def is_frame(Phi=None, gram_mat=None, with_discr=True):
     return False, (rank, None)
     
 
-def contains_simplex(s, Phi=None, gram_mat=None, get_all=False):
-    all_simps = []
-    for maybe_simplex_ind in itertools.combinations(range(Phi.columns), s+1):
-        maybe_simplex = Phi.get_sub_matrix_from_cols(maybe_simplex_ind)
-        simpl_gram = (maybe_simplex.adjoint()*maybe_simplex)
+def contains_simplex(s, Phi=None, gram_mat=None):
+    """function Binder = BinderFinder(Phi)
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%% Binder Finder
+    %%%%%% Code to find the embedded simplices (ETFs for their spans with one
+    %%%%%% more vector than their rank) in a given ETF.
+    %%%%%%
+    %%%%%% Input: Phi, the synthesis matrix of an equiangular tight frame.
+    %%%%%%
+    %%%%%% Output: Binder, the incidence matrix (rows = simplices, cols = frame
+    %%%%%% vectors) of the simplices embedded in the given ETF
+    %%%%%%
+    %%%%%% Citation: "Equiangular tight frames that contain regular simplices,"
+    %%%%%% Matthew Fickus, John Jasper, Emily J. King, Dustin G. Mixon, 2017
+    %%%%%%
+    %%%%%% Code created: July 2016
+    %%%%%% Last updated: November 22, 2017
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%"""
 
-        if maybe_simplex.rank() != s and simpl_gram.rank() != s:
-            continue
-                    
-        # Now we know its a frame
 
-        (is_c_simp, c_simp) = is_tight(gram_mat=simpl_gram)
-                        
-        if not is_c_simp:
-            continue
+    if Phi is not None:
+        d = Phi.rows
+        n = Phi.columns
+        f = Phi.f
+        gram_mat = Phi.adjoint()*Phi
+    else:
+        d = d # im trusting you here
+        n = gram_mat.columns
+        f = gram_mat.f
+    
+    k = s+1
+
+
+    (isit, (a,b,c)) = is_etf(Phi=Phi, gram_mat=gram_mat)
+    assert isit, "uhh really? you think you could trick me like that!"
+
+    assert f.equals(f.multiply(a,a),f.multiply(f.multiply(s,s),b)), "Not even compatible, get out of here with those numbers"
+
+    sqrs = [(x,f.print_elm(f.multiply(x, x))) for x in f.iter_elems()]
+    def square_root(x):
+        return next((srx[0] for srx in sqrs if srx[1]==f.print_elm(x)), None)
+    
+    if not f.equals(a, f.zero()):
+        assert square_root(f.divide(a,s)) is not None, "OK really?"
+
+        neg_a3bys3 = f.negate(fieldmath.pow_over_field(f.divide(a,s), 3, f, False))
+
+        TripleCounter = 0
+        mat_list = []
+        for ii in range(0, n-2):
+            for jj in range (ii+1, n-1):
+                for kk in range(jj+1, n):
+                    if f.equals(f.multiply(f.multiply(gram_mat.get(ii,jj),gram_mat.get(jj,kk)), gram_mat.get(kk,ii)), neg_a3bys3):
+                        TripleCounter += 1
+                        row_lst = [0]*n
+                        row_lst[ii] = 1
+                        row_lst[jj] = 1
+                        row_lst[kk] = 1
+                        mat_list.append(row_lst)
         
-        if get_all:
-                all_simps.append(maybe_simplex_ind)
-        else:
-            return maybe_simplex, maybe_simplex_ind
-    return all_simps
+        # Incrementally finding j-tuples for j>3
+        jTuple = np.array(mat_list)
+        for jTupleSize in range(3, k):
+            for ii in range(0, jTuple.shape[0]):  # should get number of rows or 
+                Indices = np.where(jTuple[ii, :] == 1)[0]
+                Indicator = np.matmul(np.transpose(np.sum((np.matmul(jTuple[:,Indices],(np.ones(jTupleSize)-np.eye(jTupleSize))) == jTupleSize-1).astype(int),axis=1)),jTuple)
+                Indicator[Indices] = 0
+                NewIndices = np.where(Indicator == jTupleSize)[0]
+                A = np.kron(np.ones((NewIndices.shape[0],1),dtype=int),jTuple[ii,:])
+                A[:,NewIndices] = np.eye(NewIndices.shape[0])
+                if ii == 0:
+                    NewjTuple = A
+                else:
+                    NewjTuple = np.vstack([NewjTuple, A])
+                    #NewjTuple[(NewjTuple.shape[0]-1):(NewjTuple.shape[0]+A.shape[0]-1),:] = A
+                jTuple[ii,:] = np.zeros((1,jTuple.shape[1]))
+
+            jTuple = NewjTuple
+
+        Binder = jTuple
+    else:
+        Binder = []
+        for maybe_simplex_ind in itertools.combinations(range(Phi.columns), s+1):
+            maybe_simplex = Phi.get_sub_matrix_from_cols(maybe_simplex_ind)
+            simpl_gram = (maybe_simplex.adjoint()*maybe_simplex)
+        
+            if maybe_simplex.rank() != s or simpl_gram.rank() != maybe_simplex.rank():
+                continue
+                        
+            # Now we know its a frame
+        
+            (is_c_simp, c_simp) = is_tight(gram_mat=simpl_gram)
+                            
+            if not is_c_simp:
+                continue
+            
+            Binder.append(maybe_simplex_ind)
+    return Binder#, all_simps
 
 
 if __name__ == "__main__":
@@ -213,18 +295,20 @@ if __name__ == "__main__":
     f11 = fieldmath.Zp(11)
     f89 = fieldmath.Zp(89)
 
+    f49 = fieldmath.FieldExtension(fieldmath.Zp(7),[1,0,3])
+
     ### Lets start by looking F_11
     ### we will construct a 63 X 126 (1,3,2)-ETF
-    d = 63
-    n = 126  # 2d
-    G = create_gram_of_d_2d_etf_from_conference_mat(create_conference_matrix(f125, f11), f11, 2, True)
+    d = 25
+    n = 50  # 50 = 7^2+1
+    G = create_gram_of_d_2d_etf_from_conference_mat(create_conference_matrix(f49, fieldmath.Zp(7)), fieldmath.Zp(7), 0, True)
     #print(is_etf(None, G, True))
     # I still havent verified this is a frame. But I can by looking at if the discrimenant, which really comes down to if the gram matrix of the IP on the image is invertible
     # But it is
     #is_frame(gram_mat=G, with_discr=False)
 
     ## Now we can look for a regular s-simplex
-    s = 13  # or also 2? 
+    s = 21  # or also 21? 
 
     # We can test some possible frame vectors
     its = 0

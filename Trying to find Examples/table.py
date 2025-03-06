@@ -10,7 +10,7 @@ import itertools
 def iter_numbers():
     keys = ["p", "l", "f", "s", "s^2", "a", "d", "n"]
     results = []
-    for p in [x for x in range(5,30) if ians_numers.isprime(x)]:
+    for p in [x for x in range(5,6) if ians_numers.isprime(x)]:
         if p % 4 != 1:
             continue
 
@@ -19,7 +19,7 @@ def iter_numbers():
         def square_root(x):
             return next((srx[0] for srx in sqrs if srx[1]==x), None)
         
-        for d in range(5, 12):
+        for d in range(5, 15):
             for n in range(d+2, d*d):
                 if (n-d) % p == 0:
                     continue
@@ -119,21 +119,9 @@ def check_thy_numbers(p, l, f, s, ss, a, d, n, b=1, all_vecs=None, scalar_produc
             # print("ETF found\n", maybe_frame, maybe_frame_ind)
             # Now we want to hint for simplices
 
-            for maybe_simplex_ind in itertools.combinations(range(maybe_frame.columns), s+1):
-                maybe_simplex = maybe_frame.get_sub_matrix_from_cols(maybe_simplex_ind)
-                simpl_gram = (maybe_simplex.adjoint()*maybe_simplex)
-
-                if maybe_simplex.rank() != s and simpl_gram.rank() != s:
-                    continue
-                
-                # Now we know its a frame
-
-                (is_c_simp, c_simp) = frame_thy.is_tight(gram_mat=simpl_gram)
-                    
-                if not is_c_simp:
-                    continue
-
-                return maybe_frame, maybe_simplex, maybe_frame_ind, maybe_simplex_ind
+            binder = frame_thy.contains_simplex(s,maybe_frame)
+            if len(binder) != 0:
+                return maybe_frame, binder
     return False
 
 
@@ -181,9 +169,6 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
                         
                 # Now we know its a frame
 
-                (is_ab, (true_a, b)) = frame_thy.is_equiangular(gram_mat=gram)
-                if not is_ab or b != 1:
-                    continue
                 (is_c, c) = frame_thy.is_tight(gram_mat=gram)
                 if not is_c:
                     continue
@@ -220,9 +205,18 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 #(5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 3, 4, 2, 7, 18)
 #(5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 4, 1, 1, 7, 20)
 
+
+## No works
+
 ## TRY THESE
 
-#check_thy_numbers(5, None, fieldmath.Zp(5),2, 4, 3, 7, 13, b=1, scalar_product_gram_discr=3)
+check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 9, 25, b=1, scalar_product_gram_discr=1)
+print("Doing discr not a square")
+check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 9, 25, b=1, scalar_product_gram_discr=2)
+print("Doing p=5")
+check_thy_numbers(5, None, fieldmath.Zp(5),5, 0, 0, 9, 26, b=1, scalar_product_gram_discr=1)
+print("Doing discr not a square")
+check_thy_numbers(5, None, fieldmath.Zp(5),5, 0, 0, 9, 26, b=1, scalar_product_gram_discr=4)
 
 # (5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 4, 1, 1, 8, 10)
 # (5, None, <fieldmath.Zp object at 0x000001B4F572DBE0>, 2, 4, 3, 8, 14)
@@ -252,9 +246,10 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 #print("Ok bad things")
 
 
-
-
-check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 4, 10, b=1, scalar_product_gram_discr=2)
+check_thy_numbers(5, None, fieldmath.Zp(5),3, 4, 2, 12, 78, b=1, scalar_product_gram_discr=2)
+#(5, None, <fieldmath.Zp object at 0x000001812101C5D0>, 2, 4, 3, 12, 78)
+#(5, None, <fieldmath.Zp object at 0x000001812101C5D0>, 3, 4, 2, 12, 78)
+#check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 4, 10, b=1, scalar_product_gram_discr=2)
 #print("DONE No simplex here! :()")
 
 """for p in [x for x in range(3,15) if ians_numers.isprime(x)]:
