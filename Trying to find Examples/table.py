@@ -85,6 +85,8 @@ def select_n_compat_vecs(all_vecs, n, search_space=None, vecs_chosen=[], b=1):
                     return vec1.f.multiply(sclr_prod,sclr_prod)
 
             for i, add_vec in enumerate(search_space):
+                if i % (len(search_space)//20+1) != 0:
+                    continue
                 compat_vecs = [j for ind, j in enumerate(search_space) if ind> i and scalar_product_mag(add_vec, j) == b ]
                 yield from select_n_compat_vecs(all_vecs, n-1, compat_vecs, vecs_chosen+[add_vec])
 
@@ -210,9 +212,9 @@ def check_thy_numbers_loop(initial_p=0, initial_d=0, initial_n=0):
 
 ## TRY THESE
 
-check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 9, 25, b=1, scalar_product_gram_discr=1)
-print("Doing discr not a square")
-check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 9, 25, b=1, scalar_product_gram_discr=2)
+#check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 9, 25, b=1, scalar_product_gram_discr=1)
+#print("Doing discr not a square")
+#check_thy_numbers(3, None, fieldmath.Zp(3),3, 0, 0, 9, 25, b=1, scalar_product_gram_discr=2)
 print("Doing p=5")
 check_thy_numbers(5, None, fieldmath.Zp(5),5, 0, 0, 9, 26, b=1, scalar_product_gram_discr=1)
 print("Doing discr not a square")
