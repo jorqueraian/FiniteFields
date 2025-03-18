@@ -385,6 +385,8 @@ class Matrix:
         self.rows = rows
         self.columns = columns
 
+        assert (len(gram_col_space) == self.rows) if gram_col_space is not None else True, "dimensions dont align"
+        assert (len(gram_row_space) == self.columns) if gram_row_space is not None else True, "dimensions dont align"
         self.cs_gram = gram_col_space
         if self.cs_gram:
             self.discr_of_col_span = field_prod(self.f, self.cs_gram)
@@ -501,7 +503,7 @@ class Matrix:
         if self.columns != other.rows:
             raise Exception("Can not multiply matrices, inner dimensions do no align.")
 
-        result = self.__class__(self.rows, other.columns, self.f, gram_row_space=self.rs_gram, gram_col_space=other.rs_gram)
+        result = self.__class__(self.rows, other.columns, self.f, gram_row_space=other.rs_gram, gram_col_space=self.cs_gram)
         for r in range(result.rows):
             for c in range(result.columns):
                 val = self.f.zero()

@@ -138,45 +138,48 @@ def is_frame(Phi=None, gram_mat=None, with_discr=True):
     # this comes down to computing some determinant, specifically of the gram matrix of the IP on the image of the frame
     # There are 3 things to check here 1) G
     
-    if gram_mat is not None:
-        fld = gram_mat.f
-    elif Phi is not None:
+    if Phi is not None:
+        fld = Phi.f
         rank = Phi.rank()
-        return Phi.rank() == (Phi.adjoint()*Phi).rank(), (rank, None)
-        
-    sqrs = list(set([fld.print_elm(fld.multiply(x, x)) for x in fld.iter_elems()]))
-    
-    def is_sqr(x):
-        if fld.equals(x, fld.zero()):
-            return fld.zero()
-        if (fld.print_elm(x) in sqrs):
-            return True
-        else:
-            return False
-    
-    if gram_mat is not None:
+        if gram_mat is None:
+            gram_mat = (Phi.adjoint()*Phi)
+        frame_bool = (Phi.rank() == (Phi.adjoint()*Phi).rank())
+    elif gram_mat is not None:
+        fld = gram_mat.f
+
         if (gram_mat-gram_mat.adjoint()).any():
             return False, (None, None)
+        frame_bool = True
         rank = gram_mat.rank()
 
-        if with_discr is False:
-            return True, (rank, None)
+    if with_discr is False or not frame_bool:
+        return frame_bool, (rank if frame_bool else None, None)
+    else:
+        sqrs = list(set([fld.print_elm(fld.multiply(x, x)) for x in fld.iter_elems()]))
+        
+        def is_sqr(x):
+            if fld.equals(x, fld.zero()):
+                return fld.zero()
+            if (fld.print_elm(x) in sqrs):
+                return True
+            else:
+                return False
 
-    # only need to do this if the field automorphism is trivial
-    discriminant = None
-    total_columns_set = {k for k in range(gram_mat.columns)}
+        # only need to do this if the field automorphism is trivial
+        discriminant = None
+        total_columns_set = {k for k in range(gram_mat.columns)}
 
-    for columns_lst in itertools.combinations(total_columns_set, rank):
-        selected_columns = gram_mat.get_sub_matrix_from_cols(columns_lst)
-        if selected_columns.rank() != rank:
-            continue
+        # Find basic submatrix.
+        print("THIS IS SLOW, probably")
+        for columns_lst in itertools.combinations(total_columns_set, rank):
+            selected_columns = gram_mat.get_sub_matrix_from_lists(columns_lst, columns_lst)
+            if selected_columns.rank() != rank:
+                continue
 
-        sub_mat = gram_mat.get_sub_matrix_from_lists(columns_lst, columns_lst)
-        mat_det = sub_mat.det()
-        discriminant = is_sqr(mat_det)
-        return True, (rank, discriminant)
-
-    return False, (rank, None)
+            sub_mat = gram_mat.get_sub_matrix_from_lists(columns_lst, columns_lst)
+            mat_det = sub_mat.det()
+            discriminant = is_sqr(mat_det)
+            return True, (rank, discriminant)
     
 
 def contains_simplex(s, Phi=None, gram_mat=None):
