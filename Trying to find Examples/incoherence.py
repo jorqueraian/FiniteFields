@@ -82,12 +82,25 @@ famed_4_10_etf = fieldmath.create_matrix(
         [1, 2, 1,  2,  1,  2,  0,  0,  0,  0]
     ], f3, column_space_gram=[1,1,1,2])
 
+merc_frame = fieldmath.create_matrix(
+    [
+        [0, 6, 5],
+        [2, 10, 10]
+    ], fieldmath.Zp(11)
+)
 
-print(frame_thy.is_frame(famed_4_10_etf, with_discr=True))
-print(frame_thy.is_etf(famed_4_10_etf))
+merc_frame_13 = fieldmath.create_matrix(
+    [
+        [0, -4, 4],
+        [2, 12, 12]
+    ], fieldmath.Zp(13)
+)
 
-print(frame_thy.contains_simplex(3, famed_4_10_etf))
+print(frame_thy.is_frame(merc_frame, with_discr=True))
+print(frame_thy.is_etf(merc_frame))
 
-print(find_incoherence(famed_4_10_etf))
+print(frame_thy.contains_simplex(2, merc_frame))
+
+print(find_incoherence(merc_frame))
 
 #print(frame_thy.contains_simplex(17-3, idk2))
