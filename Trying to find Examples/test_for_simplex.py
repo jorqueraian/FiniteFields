@@ -53,6 +53,8 @@ idk2 = fieldmath.create_matrix(
         [ 0, 0,d2,d6, 0, 0 ,0 ,0,d7,d3,d3,d7, d,d5,d5, d]
     ], f9)
 
+
+
 print(frame_thy.is_frame(idk2))
 print(frame_thy.is_etf(idk2))
 

@@ -96,10 +96,10 @@ merc_frame_13 = fieldmath.create_matrix(
     ], fieldmath.Zp(13)
 )
 
-print(frame_thy.is_frame(merc_frame, with_discr=True))
-print(frame_thy.is_etf(merc_frame))
+print(frame_thy.is_frame(famed_4_10_etf, with_discr=True))
+print(frame_thy.is_etf(famed_4_10_etf))
 
-print(frame_thy.contains_simplex(2, merc_frame))
+print(frame_thy.contains_simplex(3, famed_4_10_etf))
 
 print(find_incoherence(merc_frame))
 

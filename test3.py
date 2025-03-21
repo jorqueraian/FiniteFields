@@ -34,8 +34,8 @@ def find_ETFs_from_coherence_mat(coherence_mat, vec_mags, all_vecs, num_vecs, co
                     
                     (is_ab_equi,(a,b)) = frame_thy.is_equiangular(gram_mat=gram_mat)
                     if is_ab_equi:
-                        if not f.equals(f.multiply(a,a), f.multiply(f.multiply(s,s),b)):
-                            pass
+                        #if not f.equals(f.multiply(a,a), f.multiply(f.multiply(s,s),b)):
+                        #    pass
                         #print("We got an Equiangular System")
                         if frame_thy.is_frame(gram_mat=gram_mat)[0]:
                             #print("We got a frame!")
@@ -44,14 +44,16 @@ def find_ETFs_from_coherence_mat(coherence_mat, vec_mags, all_vecs, num_vecs, co
                                 spk = frame_thy.spark(phi)
                                 if spk > 2:
                                     print(spk)
+                                    print(subset)
                                 #yield phi, gram_mat
 
-# We want to find an example here with a^2!=b is orthog geom, spark=3.
+# We want to find an example here with a^2!=b is orthog geom, spark=3. They dont exist
+# what about spark 4?
 # with s=2 internal simplex
 n=6
 d=3
-p=5 # also try 7
-s=1 #try 2,
+p=7 # also try 7
+s=3 #try 2,
 fld = fieldmath.Zp(p) #fieldmath.FieldExtension(fieldmath.Zp(p), [p-3,0,1], 1)
 all_vecs = mat_of_non_zero_vectors(fld, 3)
 coherencesqrd_mat, vec_mags = coherence_sqrd_mat(all_vecs)
